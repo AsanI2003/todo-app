@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 
 // Update interface to use MongoDB's default string ID structure
 interface Todo {
-  _id: string;
+  id: string;
   task: string;
   completed: boolean;
   dateString: string;
@@ -89,7 +89,7 @@ export default function Home() {
       if (response.ok) {
         setTodos(
           todos.map((todo) =>
-            todo._id === id ? { ...todo, completed: !todo.completed } : todo,
+            todo.id === id ? { ...todo, completed: !todo.completed } : todo,
           ),
         );
       }
@@ -106,7 +106,7 @@ export default function Home() {
       });
 
       if (response.ok) {
-        setTodos(todos.filter((todo) => todo._id !== id));
+        setTodos(todos.filter((todo) => todo.id !== id));
       }
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -154,7 +154,7 @@ export default function Home() {
           ) : (
             todos.map((todo) => (
               <li
-                key={todo._id} // Using MongoDB generated ID fields
+                key={todo.id} // Using MongoDB generated ID fields
                 className={`flex items-center justify-between p-3 rounded border transition-all duration-200 ${
                   todo.completed
                     ? "bg-neutral-950/40 border-emerald-950 text-neutral-400"
@@ -165,7 +165,7 @@ export default function Home() {
                   <input
                     type="checkbox"
                     checked={todo.completed}
-                    onChange={() => toggleComplete(todo._id, todo.completed)} // Pass state down to API trigger
+                    onChange={() => toggleComplete(todo.id, todo.completed)} // Pass state down to API trigger
                     className="accent-white h-4 w-4 rounded shrink-0"
                   />
 
@@ -189,7 +189,7 @@ export default function Home() {
                 </div>
 
                 <button
-                  onClick={() => deleteTodo(todo._id)}
+                  onClick={() => deleteTodo(todo.id)}
                   className="text-neutral-500 hover:text-red-400 text-xs font-mono uppercase tracking-wider ml-4 shrink-0"
                 >
                   Delete

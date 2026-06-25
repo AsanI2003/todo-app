@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import Todo from "@/models/Todo";
+import { db } from "@/db"; 
+import { todos } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 // Utility helper to get today's date format cleanly in local time zone
 function getTodayDateString() {
@@ -8,36 +9,44 @@ function getTodayDateString() {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-// Fetch only tasks matching today's date string
+// Get only today's tasks
 export async function GET() {
   try {
-    await connectDB();
     const todayStr = getTodayDateString();
-    
-    // Query MongoDB find items where dateString strictly matches today's date configuration
-    const todos = await Todo.find({ dateString: todayStr }).sort({ createdAt: -1 });
-    
-    return NextResponse.json(todos, { status: 200 });
+
+    // Query Postgres via Drizzle
+    const data = await db
+      .select()
+      .from(todos)
+      .where(eq(todos.dateString, todayStr))
+      .orderBy(desc(todos.createdAt));
+
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
+    console.error("GET API Error:", error);
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
   }
 }
 
-// Save a new task with automatic current date string assignment
+//  Create a new task
 export async function POST(request: Request) {
   try {
-    await connectDB();
     const body = await request.json();
     const todayStr = getTodayDateString();
 
-    const newTodo = await Todo.create({
-      task: body.task,
-      completed: false,
-      dateString: todayStr, // Binds this task to today permanently
-    });
+    // Insert statement returning the newly created row array
+    const [newTodo] = await db
+      .insert(todos)
+      .values({
+        task: body.task,
+        completed: false,
+        dateString: todayStr,
+      })
+      .returning();
 
     return NextResponse.json(newTodo, { status: 201 });
   } catch (error) {
+    console.error("POST API Error:", error);
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
   }
 }

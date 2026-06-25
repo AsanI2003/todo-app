@@ -1,25 +1,24 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
-import Todo from "@/models/Todo";
+import { db } from "@/db";
+import { todos } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
-//Update status
+// Change status
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // Explicitly type params as a Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectDB();
     const body = await request.json();
-    
-    // Await the promise to extract the actual string ID
     const resolvedParams = await params;
-    const id = resolvedParams.id;
-    
-    const updatedTodo = await Todo.findByIdAndUpdate(
-      id,
-      { completed: body.completed },
-      { returnDocument: 'after' } // Clears out that Mongoose deprecation warning from your terminal log
-    );
+    const targetId = resolvedParams.id;
+
+   
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({ completed: body.completed })
+      .where(eq(todos.id, targetId))
+      .returning();
 
     if (!updatedTodo) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -27,24 +26,24 @@ export async function PUT(
 
     return NextResponse.json(updatedTodo, { status: 200 });
   } catch (error) {
-    console.error("PUT Error:", error);
+    console.error("PUT API Error:", error);
     return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
   }
 }
 
-// DELETE task 
+// Remove task
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // Explicitly type params as a Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectDB();
-    
-    // Await the promise to extract the actual string ID
     const resolvedParams = await params;
-    const id = resolvedParams.id;
-    
-    const deletedTodo = await Todo.findByIdAndDelete(id);
+    const targetId = resolvedParams.id;
+
+    const [deletedTodo] = await db
+      .delete(todos)
+      .where(eq(todos.id, targetId))
+      .returning();
 
     if (!deletedTodo) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -52,7 +51,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Task deleted successfully" }, { status: 200 });
   } catch (error) {
-    console.error("DELETE Error:", error);
+    console.error("DELETE API Error:", error);
     return NextResponse.json({ error: "Failed to delete task" }, { status: 500 });
   }
 }
