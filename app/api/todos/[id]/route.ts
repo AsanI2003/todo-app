@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { todos } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 // Change status
 export async function PUT(
@@ -9,6 +11,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+
     const body = await request.json();
     const resolvedParams = await params;
     const targetId = resolvedParams.id;
@@ -17,7 +28,12 @@ export async function PUT(
     const [updatedTodo] = await db
       .update(todos)
       .set({ completed: body.completed })
-      .where(eq(todos.id, targetId))
+      .where(
+        and(
+           eq(todos.id, targetId),
+            eq(todos.userId, session.user.id)
+        )
+      )
       .returning();
 
     if (!updatedTodo) {
@@ -37,12 +53,26 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+
+      const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+
     const resolvedParams = await params;
     const targetId = resolvedParams.id;
 
     const [deletedTodo] = await db
       .delete(todos)
-      .where(eq(todos.id, targetId))
+      .where(
+        and(
+          eq(todos.id, targetId),
+          eq(todos.userId, session.user.id)
+        )
+      )
       .returning();
 
     if (!deletedTodo) {
